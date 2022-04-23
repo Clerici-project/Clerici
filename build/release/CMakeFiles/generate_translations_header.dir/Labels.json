@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/CMakeFiles/generate_translations_header"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/CMakeFiles/generate_translations_header.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/CMakeFiles/generate_translations_header-complete.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-build.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-configure.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-download.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-install.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-mkdir.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-patch.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"generate_translations_header"
+		],
+		"name" : "generate_translations_header"
+	}
+}

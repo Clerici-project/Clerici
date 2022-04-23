@@ -1,0 +1,2 @@
+/opt/homebrew/bin/ccache /Library/Developer/CommandLineTools/usr/bin/ar qc libeasylogging.a CMakeFiles/easylogging.dir/easylogging++.cc.o
+/opt/homebrew/bin/ccache /Library/Developer/CommandLineTools/usr/bin/ranlib libeasylogging.a

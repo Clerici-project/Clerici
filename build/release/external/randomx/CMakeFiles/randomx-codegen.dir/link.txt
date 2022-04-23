@@ -1,0 +1,1 @@
+/opt/homebrew/bin/ccache /Library/Developer/CommandLineTools/usr/bin/c++  -DZMQ_STATIC -fvisibility=default -maes -DNDEBUG -Ofast -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names "CMakeFiles/randomx-codegen.dir/src/tests/code-generator.cpp.o" -o randomx-codegen  librandomx.a 

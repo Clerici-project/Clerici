@@ -1,0 +1,2 @@
+/opt/homebrew/bin/ccache /Library/Developer/CommandLineTools/usr/bin/ar qc libmultisig.a CMakeFiles/obj_multisig.dir/multisig.cpp.o
+/opt/homebrew/bin/ccache /Library/Developer/CommandLineTools/usr/bin/ranlib libmultisig.a

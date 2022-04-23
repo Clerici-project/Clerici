@@ -1,0 +1,3 @@
+/Users/safahi/Desktop/Clerici-main 2/build/release/translations/CMakeFiles/generate_translations_header.dir
+/Users/safahi/Desktop/Clerici-main 2/build/release/translations/CMakeFiles/edit_cache.dir
+/Users/safahi/Desktop/Clerici-main 2/build/release/translations/CMakeFiles/rebuild_cache.dir

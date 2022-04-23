@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/tests/CMakeFiles/googletest"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/tests/CMakeFiles/googletest.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/tests/CMakeFiles/googletest-complete.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/tests/googletest-prefix/src/googletest-stamp/googletest-build.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/tests/googletest-prefix/src/googletest-stamp/googletest-configure.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/tests/googletest-prefix/src/googletest-stamp/googletest-download.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/tests/googletest-prefix/src/googletest-stamp/googletest-install.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/tests/googletest-prefix/src/googletest-stamp/googletest-mkdir.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/tests/googletest-prefix/src/googletest-stamp/googletest-patch.rule"
+		},
+		{
+			"file" : "/Users/safahi/Desktop/Clerici-main 2/build/release/tests/googletest-prefix/src/googletest-stamp/googletest-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"googletest"
+		],
+		"name" : "googletest"
+	}
+}

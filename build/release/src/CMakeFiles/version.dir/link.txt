@@ -1,0 +1,2 @@
+/opt/homebrew/bin/ccache /Library/Developer/CommandLineTools/usr/bin/ar qc libversion.a CMakeFiles/obj_version.dir/__/version.cpp.o
+/opt/homebrew/bin/ccache /Library/Developer/CommandLineTools/usr/bin/ranlib libversion.a

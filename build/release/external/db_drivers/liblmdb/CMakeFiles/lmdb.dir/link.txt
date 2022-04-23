@@ -1,0 +1,2 @@
+/opt/homebrew/bin/ccache /Library/Developer/CommandLineTools/usr/bin/ar qc liblmdb.a CMakeFiles/lmdb.dir/mdb.c.o CMakeFiles/lmdb.dir/midl.c.o
+/opt/homebrew/bin/ccache /Library/Developer/CommandLineTools/usr/bin/ranlib liblmdb.a

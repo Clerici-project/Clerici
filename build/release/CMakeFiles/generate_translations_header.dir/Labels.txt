@@ -1,0 +1,13 @@
+# Target labels
+ generate_translations_header
+# Source files and their labels
+/Users/safahi/Desktop/Clerici-main 2/build/release/CMakeFiles/generate_translations_header
+/Users/safahi/Desktop/Clerici-main 2/build/release/CMakeFiles/generate_translations_header.rule
+/Users/safahi/Desktop/Clerici-main 2/build/release/CMakeFiles/generate_translations_header-complete.rule
+/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-build.rule
+/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-configure.rule
+/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-download.rule
+/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-install.rule
+/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-mkdir.rule
+/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-patch.rule
+/Users/safahi/Desktop/Clerici-main 2/build/release/generate_translations_header-prefix/src/generate_translations_header-stamp/generate_translations_header-update.rule
