@@ -1,8 +1,0 @@
-/Users/safahi/Desktop/Clerici-main 2/build/release/tests/gtest/CMakeFiles/gtest.dir
-/Users/safahi/Desktop/Clerici-main 2/build/release/tests/gtest/CMakeFiles/gtest_main.dir
-/Users/safahi/Desktop/Clerici-main 2/build/release/tests/gtest/CMakeFiles/edit_cache.dir
-/Users/safahi/Desktop/Clerici-main 2/build/release/tests/gtest/CMakeFiles/rebuild_cache.dir
-/Users/safahi/Desktop/Clerici-main 2/build/release/tests/gtest/CMakeFiles/list_install_components.dir
-/Users/safahi/Desktop/Clerici-main 2/build/release/tests/gtest/CMakeFiles/install.dir
-/Users/safahi/Desktop/Clerici-main 2/build/release/tests/gtest/CMakeFiles/install/local.dir
-/Users/safahi/Desktop/Clerici-main 2/build/release/tests/gtest/CMakeFiles/install/strip.dir

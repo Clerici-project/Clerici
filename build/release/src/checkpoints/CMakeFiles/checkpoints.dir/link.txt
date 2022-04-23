@@ -1,2 +1,0 @@
-/opt/homebrew/bin/ccache /Library/Developer/CommandLineTools/usr/bin/ar qc libcheckpoints.a CMakeFiles/obj_checkpoints.dir/checkpoints.cpp.o
-/opt/homebrew/bin/ccache /Library/Developer/CommandLineTools/usr/bin/ranlib libcheckpoints.a

@@ -1,2 +1,0 @@
-/Users/safahi/Desktop/Clerici-main 2/build/release/src/crypto/wallet/CMakeFiles/CheckASM-ATT/CMakeFiles/edit_cache.dir
-/Users/safahi/Desktop/Clerici-main 2/build/release/src/crypto/wallet/CMakeFiles/CheckASM-ATT/CMakeFiles/rebuild_cache.dir
