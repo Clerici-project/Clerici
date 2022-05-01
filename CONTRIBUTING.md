@@ -56,7 +56,7 @@ the previous paragraph is here.
 ## License
 
 Copyright (c) 2009-2015 Pieter Hintjens.
-Copyright (c) 2017-2018 The UTTC Project.
+Copyright (c) 2017-2022 The CLC Project.
 
 This Specification is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
 
@@ -68,11 +68,9 @@ You should have received a copy of the GNU General Public License along with thi
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
-The "UTTC Maintainer Team" is defined in this document as the following users:
-- fluffypony
-- UTTCmooo
-- hyc
-
+The "CLC Maintainer Team" is defined in this document as the following users:
+- Samisbakedham
+- Dclerici77
 ## Goals
 
 C4 is meant to provide a reusable optimal collaboration model for open source software projects. It has these specific goals:
