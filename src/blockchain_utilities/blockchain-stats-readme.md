@@ -1,6 +1,6 @@
-# Monero Blockchain Stats
+# Clerici Blockchain Stats
 
-Monero Blockchain Stats utlity exports daily statistics for the monero blockchain from creation through current state.
+Clerici Blockchain Stats utlity exports daily statistics for the monero blockchain from creation through current state.
 
 ## Usage:
 
@@ -16,10 +16,10 @@ This loads the existing blockchain and prints the results to the terminal. Defau
 - `monero-blockchain-stats | save-to-database.sh`
 
 ### Options
-`--data-dir arg` 
+`--data-dir arg`
 to specify location of blockchain storage
 
-`--testnet` 
+`--testnet`
 Run on testnet.
 
 `--stagenet`
