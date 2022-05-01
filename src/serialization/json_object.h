@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2020, The Monero Project
+// Copyright (c) 2016-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -292,6 +292,9 @@ void fromJsonValue(const rapidjson::Value& val, rct::rangeSig& sig);
 void toJsonValue(rapidjson::Writer<epee::byte_stream>& dest, const rct::Bulletproof& p);
 void fromJsonValue(const rapidjson::Value& val, rct::Bulletproof& p);
 
+void toJsonValue(rapidjson::Writer<epee::byte_stream>& dest, const rct::BulletproofPlus& p);
+void fromJsonValue(const rapidjson::Value& val, rct::BulletproofPlus& p);
+
 void toJsonValue(rapidjson::Writer<epee::byte_stream>& dest, const rct::boroSig& sig);
 void fromJsonValue(const rapidjson::Value& val, rct::boroSig& sig);
 
@@ -368,7 +371,7 @@ inline typename std::enable_if<sfinae::is_vector_like<Vec>::value, void>::type t
   static_assert(!std::is_same<value_type, unsigned char>::value, "encoding an array of unsigned char is faster as hex");
 
   dest.StartArray();
-  for (const auto& t : vec)
+  for (auto t : vec)
     toJsonValue(dest, t);
   dest.EndArray();
 }

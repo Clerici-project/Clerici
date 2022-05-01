@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2020, The Monero Project
+// Copyright (c) 2017-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -31,6 +31,8 @@
 #include "rpc/rpc_payment_signature.h"
 #include "rpc/rpc_payment_costs.h"
 #include "storages/http_abstract_invoke.h"
+
+#include <boost/thread.hpp>
 
 #define RETURN_ON_RPC_RESPONSE_ERROR(r, error, res, method) \
   do { \
@@ -68,6 +70,7 @@ void NodeRPCProxy::invalidate()
   m_dynamic_base_fee_estimate = 0;
   m_dynamic_base_fee_estimate_cached_height = 0;
   m_dynamic_base_fee_estimate_grace_blocks = 0;
+  m_dynamic_base_fee_estimate_vector.clear();
   m_fee_quantization_mask = 1;
   m_rpc_version = 0;
   m_target_height = 0;
@@ -208,7 +211,7 @@ boost::optional<std::string> NodeRPCProxy::get_earliest_height(uint8_t version, 
   return boost::optional<std::string>();
 }
 
-boost::optional<std::string> NodeRPCProxy::get_dynamic_base_fee_estimate(uint64_t grace_blocks, uint64_t &fee)
+boost::optional<std::string> NodeRPCProxy::get_dynamic_base_fee_estimate_2021_scaling(uint64_t grace_blocks, std::vector<uint64_t> &fees)
 {
   uint64_t height;
 
@@ -236,11 +239,22 @@ boost::optional<std::string> NodeRPCProxy::get_dynamic_base_fee_estimate(uint64_
     m_dynamic_base_fee_estimate = resp_t.fee;
     m_dynamic_base_fee_estimate_cached_height = height;
     m_dynamic_base_fee_estimate_grace_blocks = grace_blocks;
+    m_dynamic_base_fee_estimate_vector = !resp_t.fees.empty() ? std::move(resp_t.fees) : std::vector<uint64_t>{m_dynamic_base_fee_estimate};
     m_fee_quantization_mask = resp_t.quantization_mask;
   }
 
-  fee = m_dynamic_base_fee_estimate;
+  fees = m_dynamic_base_fee_estimate_vector;
   return boost::optional<std::string>();
+}
+
+boost::optional<std::string> NodeRPCProxy::get_dynamic_base_fee_estimate(uint64_t grace_blocks, uint64_t &fee)
+{
+  std::vector<uint64_t> fees;
+  auto res = get_dynamic_base_fee_estimate_2021_scaling(grace_blocks, fees);
+  if (res)
+    return res;
+  fee = fees[0];
+  return boost::none;
 }
 
 boost::optional<std::string> NodeRPCProxy::get_fee_quantization_mask(uint64_t &fee_quantization_mask)
@@ -304,7 +318,12 @@ boost::optional<std::string> NodeRPCProxy::get_rpc_payment_info(bool mining, boo
     m_rpc_payment_seed_height = resp_t.seed_height;
     m_rpc_payment_cookie = resp_t.cookie;
 
-    if (!epee::string_tools::parse_hexstr_to_binbuff(resp_t.hashing_blob, m_rpc_payment_blob) || m_rpc_payment_blob.size() < 43)
+    if (m_rpc_payment_diff == 0)
+    {
+      // If no payment required daemon doesn't give us back a hashing blob
+      m_rpc_payment_blob.clear();
+    }
+    else if (!epee::string_tools::parse_hexstr_to_binbuff(resp_t.hashing_blob, m_rpc_payment_blob) || m_rpc_payment_blob.size() < 43)
     {
       MERROR("Invalid hashing blob: " << resp_t.hashing_blob);
       return std::string("Invalid hashing blob");

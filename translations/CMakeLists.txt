@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2020, The Monero Project
+# Copyright (c) 2017-2022, The Monero Project
 #
 # All rights reserved.
 #
@@ -73,7 +73,7 @@ string(REPLACE ".ts" ".qm" qm_files "${ts_files}")
 
 add_custom_command(TARGET generate_translations_header
   POST_BUILD
-  COMMAND ./generate_translations_header ${qm_files}
+  COMMAND $<TARGET_FILE:generate_translations_header> ${qm_files}
   WORKING_DIRECTORY "${CMAKE_CURRENT_BIN_DIR}"
   COMMENT "Generating embedded translations header")
 

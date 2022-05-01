@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2020, The Monero Project
+# Copyright (c) 2014-2022, The Monero Project
 #
 # All rights reserved.
 #
@@ -36,6 +36,7 @@ set(unit_tests_sources
   block_reward.cpp
   bootstrap_node_selector.cpp
   bulletproofs.cpp
+  bulletproofs_plus.cpp
   canonical_amounts.cpp
   chacha.cpp
   checkpoints.cpp
@@ -47,6 +48,7 @@ set(unit_tests_sources
   dns_resolver.cpp
   epee_boosted_tcp_server.cpp
   epee_levin_protocol_handler_async.cpp
+  epee_serialization.cpp
   epee_utils.cpp
   expect.cpp
   fee.cpp
@@ -75,6 +77,7 @@ set(unit_tests_sources
   pruning.cpp
   random.cpp
   rolling_median.cpp
+  scaling_2021.cpp
   serialization.cpp
   sha256.cpp
   slow_memmem.cpp
@@ -101,7 +104,7 @@ set(unit_tests_sources
 set(unit_tests_headers
   unit_tests_utils.h)
 
-add_executable(unit_tests
+monero_add_minimal_executable(unit_tests
   ${unit_tests_sources}
   ${unit_tests_headers})
 target_link_libraries(unit_tests
@@ -144,6 +147,6 @@ add_test(
   NAME    unit_tests
   COMMAND unit_tests --data-dir "${TEST_DATA_DIR}")
 
-add_executable(test_notifier test_notifier.cpp)
+monero_add_minimal_executable(test_notifier test_notifier.cpp)
 target_link_libraries(test_notifier ${EXTRA_LIBRARIES})
 set_property(TARGET test_notifier PROPERTY FOLDER "tests")

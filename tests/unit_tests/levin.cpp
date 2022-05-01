@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020, The Monero Project
+// Copyright (c) 2019-2022, The Monero Project
 //
 // All rights reserved.
 //
@@ -245,7 +245,7 @@ namespace
             return out;
         }
 
-        virtual int invoke(int command, const epee::span<const uint8_t> in_buff, std::string& buff_out, cryptonote::levin::detail::p2p_context& context) override final
+        virtual int invoke(int command, const epee::span<const uint8_t> in_buff, epee::byte_stream& buff_out, cryptonote::levin::detail::p2p_context& context) override final
         {
             buff_out.clear();
             invoked_.push_back(
@@ -395,27 +395,94 @@ TEST(make_header, expect_return)
     EXPECT_EQ(0u, header1.m_flags);
 }
 
-TEST(make_notify, empty_payload)
+TEST(message_writer, invoke_with_empty_payload)
 {
-    const epee::byte_slice message = epee::levin::make_notify(443, nullptr);
+    const epee::byte_slice message = epee::levin::message_writer{}.finalize_invoke(443);
+    const epee::levin::bucket_head2 header =
+        epee::levin::make_header(443, 0, LEVIN_PACKET_REQUEST, true);
+    ASSERT_EQ(sizeof(header), message.size());
+    EXPECT_TRUE(std::memcmp(std::addressof(header), message.data(), sizeof(header)) == 0);
+}
+
+TEST(message_writer, invoke_with_payload)
+{
+    std::string bytes(100, 'a');
+    std::generate(bytes.begin(), bytes.end(), crypto::random_device{});
+
+    epee::levin::message_writer writer{};
+    writer.buffer.write(epee::to_span(bytes));
+
+    const epee::byte_slice message = writer.finalize_invoke(443);
+    const epee::levin::bucket_head2 header =
+        epee::levin::make_header(443, bytes.size(), LEVIN_PACKET_REQUEST, true);
+
+    ASSERT_EQ(sizeof(header) + bytes.size(), message.size());
+    EXPECT_TRUE(std::memcmp(std::addressof(header), message.data(), sizeof(header)) == 0);
+    EXPECT_TRUE(std::memcmp(bytes.data(), message.data() + sizeof(header), bytes.size()) == 0);
+}
+
+TEST(message_writer, notify_with_empty_payload)
+{
+    const epee::byte_slice message = epee::levin::message_writer{}.finalize_notify(443);
     const epee::levin::bucket_head2 header =
         epee::levin::make_header(443, 0, LEVIN_PACKET_REQUEST, false);
     ASSERT_EQ(sizeof(header), message.size());
     EXPECT_TRUE(std::memcmp(std::addressof(header), message.data(), sizeof(header)) == 0);
 }
 
-TEST(make_notify, with_payload)
+TEST(message_writer, notify_with_payload)
 {
     std::string bytes(100, 'a');
     std::generate(bytes.begin(), bytes.end(), crypto::random_device{});
 
-    const epee::byte_slice message = epee::levin::make_notify(443, epee::strspan<std::uint8_t>(bytes));
+    epee::levin::message_writer writer{};
+    writer.buffer.write(epee::to_span(bytes));
+
+    const epee::byte_slice message = writer.finalize_notify(443);
     const epee::levin::bucket_head2 header =
         epee::levin::make_header(443, bytes.size(), LEVIN_PACKET_REQUEST, false);
 
     ASSERT_EQ(sizeof(header) + bytes.size(), message.size());
     EXPECT_TRUE(std::memcmp(std::addressof(header), message.data(), sizeof(header)) == 0);
     EXPECT_TRUE(std::memcmp(bytes.data(), message.data() + sizeof(header), bytes.size()) == 0);
+}
+
+TEST(message_writer, response_with_empty_payload)
+{
+    const epee::byte_slice message = epee::levin::message_writer{}.finalize_response(443, 1);
+    epee::levin::bucket_head2 header =
+        epee::levin::make_header(443, 0, LEVIN_PACKET_RESPONSE, false);
+    header.m_return_code = SWAP32LE(1);
+    ASSERT_EQ(sizeof(header), message.size());
+    EXPECT_TRUE(std::memcmp(std::addressof(header), message.data(), sizeof(header)) == 0);
+}
+
+TEST(message_writer, response_with_payload)
+{
+    std::string bytes(100, 'a');
+    std::generate(bytes.begin(), bytes.end(), crypto::random_device{});
+
+    epee::levin::message_writer writer{};
+    writer.buffer.write(epee::to_span(bytes));
+
+    const epee::byte_slice message = writer.finalize_response(443, 6450);
+    epee::levin::bucket_head2 header =
+        epee::levin::make_header(443, bytes.size(), LEVIN_PACKET_RESPONSE, false);
+    header.m_return_code = SWAP32LE(6450);
+
+    ASSERT_EQ(sizeof(header) + bytes.size(), message.size());
+    EXPECT_TRUE(std::memcmp(std::addressof(header), message.data(), sizeof(header)) == 0);
+    EXPECT_TRUE(std::memcmp(bytes.data(), message.data() + sizeof(header), bytes.size()) == 0);
+}
+
+TEST(message_writer, error)
+{
+    epee::levin::message_writer writer{};
+    writer.buffer.clear();
+
+    EXPECT_THROW(writer.finalize_invoke(0), std::runtime_error);
+    EXPECT_THROW(writer.finalize_notify(0), std::runtime_error);
+    EXPECT_THROW(writer.finalize_response(0, 0), std::runtime_error);
 }
 
 TEST(make_noise, invalid)
@@ -439,13 +506,13 @@ TEST(make_noise, valid)
 
 TEST(make_fragment, invalid)
 {
-    EXPECT_TRUE(epee::levin::make_fragmented_notify(nullptr, 0, nullptr).empty());
+    EXPECT_TRUE(epee::levin::make_fragmented_notify(0, 0, epee::levin::message_writer{}).empty());
 }
 
 TEST(make_fragment, single)
 {
     const epee::byte_slice noise = epee::levin::make_noise_notify(1024);
-    const epee::byte_slice fragment = epee::levin::make_fragmented_notify(noise, 11, nullptr);
+    const epee::byte_slice fragment = epee::levin::make_fragmented_notify(noise.size(), 11, epee::levin::message_writer{});
     const epee::levin::bucket_head2 header =
         epee::levin::make_header(11, 1024 - sizeof(epee::levin::bucket_head2), LEVIN_PACKET_REQUEST, false);
 
@@ -460,8 +527,13 @@ TEST(make_fragment, multiple)
     std::string bytes(1024 * 3 - 150, 'a');
     std::generate(bytes.begin(), bytes.end(), crypto::random_device{});
 
+    epee::levin::message_writer message;
+    message.buffer.write(epee::to_span(bytes));
+
     const epee::byte_slice noise = epee::levin::make_noise_notify(1024);
-    epee::byte_slice fragment = epee::levin::make_fragmented_notify(noise, 114, epee::strspan<std::uint8_t>(bytes));
+    epee::byte_slice fragment = epee::levin::make_fragmented_notify(noise.size(), 114, std::move(message));
+
+    EXPECT_EQ(1024 * 3, fragment.size());
 
     epee::levin::bucket_head2 header =
         epee::levin::make_header(0, 1024 - sizeof(epee::levin::bucket_head2), LEVIN_PACKET_BEGIN, false);
@@ -508,6 +580,7 @@ TEST(make_fragment, multiple)
 
     fragment.take_slice(bytes.size());
 
+    EXPECT_EQ(18, fragment.size());
     EXPECT_EQ(18, std::count(fragment.cbegin(), fragment.cend(), 0));
 }
 
@@ -678,8 +751,9 @@ TEST_F(levin_notify, stem_no_outs_without_padding)
     ASSERT_LT(0u, io_service_.poll());
     EXPECT_EQ(txs, events_.take_relayed(cryptonote::relay_method::fluff));
     if (events_.has_stem_txes())
+    {
         EXPECT_EQ(txs, events_.take_relayed(cryptonote::relay_method::stem));
-
+    }
 
     notifier.run_fluff();
     ASSERT_LT(0u, io_service_.poll());
@@ -1055,7 +1129,9 @@ TEST_F(levin_notify, stem_no_outs_with_padding)
     ASSERT_LT(0u, io_service_.poll());
     EXPECT_EQ(txs, events_.take_relayed(cryptonote::relay_method::fluff));
     if (events_.has_stem_txes())
+    {
         EXPECT_EQ(txs, events_.take_relayed(cryptonote::relay_method::stem));
+    }
 
     notifier.run_fluff();
     ASSERT_LT(0u, io_service_.poll());
@@ -2202,20 +2278,31 @@ TEST_F(levin_notify, command_max_bytes)
 
     add_connection(true);
 
-    std::string bytes(4096, 'h');
+    std::string payload(4096, 'h');
+    epee::byte_slice bytes;
+    {
+        epee::levin::message_writer dest{};
+        dest.buffer.write(epee::to_span(payload));
+        bytes = dest.finalize_notify(ping_command);
+    }
 
-    EXPECT_EQ(1, get_connections().notify(ping_command, epee::strspan<std::uint8_t>(bytes), contexts_.front().get_id()));
+    EXPECT_EQ(1, get_connections().send(bytes.clone(), contexts_.front().get_id()));
     EXPECT_EQ(1u, contexts_.front().process_send_queue(true));
     EXPECT_EQ(1u, receiver_.notified_size());
 
     const received_message msg = receiver_.get_raw_notification();
     EXPECT_EQ(ping_command, msg.command);
     EXPECT_EQ(contexts_.front().get_id(), msg.connection);
-    EXPECT_EQ(bytes, msg.payload);
+    EXPECT_EQ(payload, msg.payload);
 
-    bytes.push_back('e');
+    {
+        payload.push_back('h');
+        epee::levin::message_writer dest{};
+        dest.buffer.write(epee::to_span(payload));
+        bytes = dest.finalize_notify(ping_command);
+    }
 
-    EXPECT_EQ(1, get_connections().notify(ping_command, epee::strspan<std::uint8_t>(bytes), contexts_.front().get_id()));
+    EXPECT_EQ(1, get_connections().send(std::move(bytes), contexts_.front().get_id()));
     EXPECT_EQ(1u, contexts_.front().process_send_queue(false));
     EXPECT_EQ(0u, receiver_.notified_size());
 }

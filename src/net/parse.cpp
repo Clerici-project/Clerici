@@ -1,4 +1,5 @@
-// Copyright (c) 2018, The Monero Project
+// Copyright (c) 2018-2022, The Monero Project
+
 //
 // All rights reserved.
 //
@@ -31,6 +32,7 @@
 #include "net/tor_address.h"
 #include "net/i2p_address.h"
 #include "string_tools.h"
+#include "string_tools_lexical.h"
 
 namespace net
 {

@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -32,6 +32,7 @@
 #include <boost/algorithm/string.hpp>
 #include "wipeable_string.h"
 #include "string_tools.h"
+#include "string_tools_lexical.h"
 #include "serialization/string.h"
 #include "cryptonote_format_utils.h"
 #include "cryptonote_config.h"
@@ -105,7 +106,8 @@ namespace cryptonote
   uint64_t get_transaction_weight_clawback(const transaction &tx, size_t n_padded_outputs)
   {
     const rct::rctSig &rv = tx.rct_signatures;
-    const uint64_t bp_base = 368;
+    const bool plus = rv.type == rct::RCTTypeBulletproofPlus;
+    const uint64_t bp_base = (32 * ((plus ? 6 : 9) + 7 * 2)) / 2; // notional size of a 2 output proof, normalized to 1 proof (ie, divided by 2)
     const size_t n_outputs = tx.vout.size();
     if (n_padded_outputs <= 2)
       return 0;
@@ -113,7 +115,7 @@ namespace cryptonote
     while ((1u << nlr) < n_padded_outputs)
       ++nlr;
     nlr += 6;
-    const size_t bp_size = 32 * (9 + 2 * nlr);
+    const size_t bp_size = 32 * ((plus ? 6 : 9) + 2 * nlr);
     CHECK_AND_ASSERT_THROW_MES_L1(n_outputs <= BULLETPROOF_MAX_OUTPUTS, "maximum number of outputs is " + std::to_string(BULLETPROOF_MAX_OUTPUTS) + " per transaction");
     CHECK_AND_ASSERT_THROW_MES_L1(bp_base * n_padded_outputs >= bp_size, "Invalid bulletproof clawback: bp_base " + std::to_string(bp_base) + ", n_padded_outputs "
         + std::to_string(n_padded_outputs) + ", bp_size " + std::to_string(bp_size));
@@ -164,7 +166,32 @@ namespace cryptonote
       if (!base_only)
       {
         const bool bulletproof = rct::is_rct_bulletproof(rv.type);
-        if (bulletproof)
+        const bool bulletproof_plus = rct::is_rct_bulletproof_plus(rv.type);
+        if (bulletproof_plus)
+        {
+          if (rv.p.bulletproofs_plus.size() != 1)
+          {
+            LOG_PRINT_L1("Failed to parse transaction from blob, bad bulletproofs_plus size in tx " << get_transaction_hash(tx));
+            return false;
+          }
+          if (rv.p.bulletproofs_plus[0].L.size() < 6)
+          {
+            LOG_PRINT_L1("Failed to parse transaction from blob, bad bulletproofs_plus L size in tx " << get_transaction_hash(tx));
+            return false;
+          }
+          const size_t max_outputs = rct::n_bulletproof_plus_max_amounts(rv.p.bulletproofs_plus[0]);
+          if (max_outputs < tx.vout.size())
+          {
+            LOG_PRINT_L1("Failed to parse transaction from blob, bad bulletproofs_plus max outputs in tx " << get_transaction_hash(tx));
+            return false;
+          }
+          const size_t n_amounts = tx.vout.size();
+          CHECK_AND_ASSERT_MES(n_amounts == rv.outPk.size(), false, "Internal error filling out V");
+          rv.p.bulletproofs_plus[0].V.resize(n_amounts);
+          for (size_t i = 0; i < n_amounts; ++i)
+            rv.p.bulletproofs_plus[0].V[i] = rv.outPk[i].mask;
+        }
+        else if (bulletproof)
         {
           if (rv.p.bulletproofs.size() != 1)
           {
@@ -195,9 +222,7 @@ namespace cryptonote
   //---------------------------------------------------------------
   bool parse_and_validate_tx_from_blob(const blobdata_ref& tx_blob, transaction& tx)
   {
-    std::stringstream ss;
-    ss << tx_blob;
-    binary_archive<false> ba(ss);
+    binary_archive<false> ba{epee::strspan<std::uint8_t>(tx_blob)};
     bool r = ::serialization::serialize(ba, tx);
     CHECK_AND_ASSERT_MES(r, false, "Failed to parse transaction from blob");
     CHECK_AND_ASSERT_MES(expand_transaction_1(tx, false), false, "Failed to expand transaction data");
@@ -208,9 +233,7 @@ namespace cryptonote
   //---------------------------------------------------------------
   bool parse_and_validate_tx_base_from_blob(const blobdata_ref& tx_blob, transaction& tx)
   {
-    std::stringstream ss;
-    ss << tx_blob;
-    binary_archive<false> ba(ss);
+    binary_archive<false> ba{epee::strspan<std::uint8_t>(tx_blob)};
     bool r = tx.serialize_base(ba);
     CHECK_AND_ASSERT_MES(r, false, "Failed to parse transaction from blob");
     CHECK_AND_ASSERT_MES(expand_transaction_1(tx, true), false, "Failed to expand transaction data");
@@ -220,9 +243,7 @@ namespace cryptonote
   //---------------------------------------------------------------
   bool parse_and_validate_tx_prefix_from_blob(const blobdata_ref& tx_blob, transaction_prefix& tx)
   {
-    std::stringstream ss;
-    ss << tx_blob;
-    binary_archive<false> ba(ss);
+    binary_archive<false> ba{epee::strspan<std::uint8_t>(tx_blob)};
     bool r = ::serialization::serialize_noeof(ba, tx);
     CHECK_AND_ASSERT_MES(r, false, "Failed to parse transaction prefix from blob");
     return true;
@@ -230,9 +251,7 @@ namespace cryptonote
   //---------------------------------------------------------------
   bool parse_and_validate_tx_from_blob(const blobdata_ref& tx_blob, transaction& tx, crypto::hash& tx_hash)
   {
-    std::stringstream ss;
-    ss << tx_blob;
-    binary_archive<false> ba(ss);
+    binary_archive<false> ba{epee::strspan<std::uint8_t>(tx_blob)};
     bool r = ::serialization::serialize(ba, tx);
     CHECK_AND_ASSERT_MES(r, false, "Failed to parse transaction from blob");
     CHECK_AND_ASSERT_MES(expand_transaction_1(tx, false), false, "Failed to expand transaction data");
@@ -314,7 +333,26 @@ namespace cryptonote
     {
       // derive secret key with subaddress - step 1: original CN derivation
       crypto::secret_key scalar_step1;
-      hwdev.derive_secret_key(recv_derivation, real_output_index, ack.m_spend_secret_key, scalar_step1); // computes Hs(a*R || idx) + b
+      crypto::secret_key spend_skey = crypto::null_skey;
+
+      if (ack.m_multisig_keys.empty())
+      {
+        // if not multisig, use normal spend skey
+        spend_skey = ack.m_spend_secret_key;
+      }
+      else
+      {
+        // if multisig, use sum of multisig privkeys (local account's share of aggregate spend key)
+        for (const auto &multisig_key : ack.m_multisig_keys)
+        {
+          sc_add((unsigned char*)spend_skey.data,
+            (const unsigned char*)multisig_key.data,
+            (const unsigned char*)spend_skey.data);
+        }
+      }
+
+      // computes Hs(a*R || idx) + b
+      hwdev.derive_secret_key(recv_derivation, real_output_index, spend_skey, scalar_step1);
 
       // step 2: add Hs(a || index_major || index_minor)
       crypto::secret_key subaddr_sk;
@@ -408,9 +446,11 @@ namespace cryptonote
     if (tx.version < 2)
       return blob_size;
     const rct::rctSig &rv = tx.rct_signatures;
-    if (!rct::is_rct_bulletproof(rv.type))
+    const bool bulletproof = rct::is_rct_bulletproof(rv.type);
+    const bool bulletproof_plus = rct::is_rct_bulletproof_plus(rv.type);
+    if (!bulletproof && !bulletproof_plus)
       return blob_size;
-    const size_t n_padded_outputs = rct::n_bulletproof_max_amounts(rv.p.bulletproofs);
+    const size_t n_padded_outputs = bulletproof_plus ? rct::n_bulletproof_plus_max_amounts(rv.p.bulletproofs_plus) : rct::n_bulletproof_max_amounts(rv.p.bulletproofs);
     uint64_t bp_clawback = get_transaction_weight_clawback(tx, n_padded_outputs);
     CHECK_AND_ASSERT_THROW_MES_L1(bp_clawback <= std::numeric_limits<uint64_t>::max() - blob_size, "Weight overflow");
     return blob_size + bp_clawback;
@@ -420,8 +460,8 @@ namespace cryptonote
   {
     CHECK_AND_ASSERT_MES(tx.pruned, std::numeric_limits<uint64_t>::max(), "get_pruned_transaction_weight does not support non pruned txes");
     CHECK_AND_ASSERT_MES(tx.version >= 2, std::numeric_limits<uint64_t>::max(), "get_pruned_transaction_weight does not support v1 txes");
-    CHECK_AND_ASSERT_MES(tx.rct_signatures.type >= rct::RCTTypeBulletproof2 || tx.rct_signatures.type == rct::RCTTypeCLSAG,
-        std::numeric_limits<uint64_t>::max(), "get_pruned_transaction_weight does not support older range proof types");
+    CHECK_AND_ASSERT_MES(tx.rct_signatures.type == rct::RCTTypeBulletproof2 || tx.rct_signatures.type == rct::RCTTypeCLSAG || tx.rct_signatures.type == rct::RCTTypeBulletproofPlus,
+        std::numeric_limits<uint64_t>::max(), "Unsupported rct_signatures type in get_pruned_transaction_weight");
     CHECK_AND_ASSERT_MES(!tx.vin.empty(), std::numeric_limits<uint64_t>::max(), "empty vin");
     CHECK_AND_ASSERT_MES(tx.vin[0].type() == typeid(cryptonote::txin_to_key), std::numeric_limits<uint64_t>::max(), "empty vin");
 
@@ -439,12 +479,12 @@ namespace cryptonote
     while ((n_padded_outputs = (1u << nrl)) < tx.vout.size())
       ++nrl;
     nrl += 6;
-    extra = 32 * (9 + 2 * nrl) + 2;
+    extra = 32 * ((rct::is_rct_bulletproof_plus(tx.rct_signatures.type) ? 6 : 9) + 2 * nrl) + 2;
     weight += extra;
 
     // calculate deterministic CLSAG/MLSAG data size
     const size_t ring_size = boost::get<cryptonote::txin_to_key>(tx.vin[0]).key_offsets.size();
-    if (tx.rct_signatures.type == rct::RCTTypeCLSAG)
+    if (rct::is_rct_clsag(tx.rct_signatures.type))
       extra = tx.vin.size() * (ring_size + 2) * 32;
     else
       extra = tx.vin.size() * (ring_size * (1 + 1) * 32 + 32 /* cc */);
@@ -516,22 +556,15 @@ namespace cryptonote
     if(tx_extra.empty())
       return true;
 
-    std::string extra_str(reinterpret_cast<const char*>(tx_extra.data()), tx_extra.size());
-    std::istringstream iss(extra_str);
-    binary_archive<false> ar(iss);
+    binary_archive<false> ar{epee::to_span(tx_extra)};
 
-    bool eof = false;
-    while (!eof)
+    do
     {
       tx_extra_field field;
       bool r = ::do_serialize(ar, field);
       CHECK_AND_NO_ASSERT_MES_L1(r, false, "failed to deserialize extra field. extra = " << string_tools::buff_to_hex_nodelimer(std::string(reinterpret_cast<const char*>(tx_extra.data()), tx_extra.size())));
       tx_extra_fields.push_back(field);
-
-      std::ios_base::iostate state = iss.rdstate();
-      eof = (EOF == iss.peek());
-      iss.clear(state);
-    }
+    } while (!ar.eof());
     CHECK_AND_NO_ASSERT_MES_L1(::serialization::check_stream_state(ar), false, "failed to deserialize extra field. extra = " << string_tools::buff_to_hex_nodelimer(std::string(reinterpret_cast<const char*>(tx_extra.data()), tx_extra.size())));
 
     return true;
@@ -562,13 +595,10 @@ namespace cryptonote
       return true;
     }
 
-    std::string extra_str(reinterpret_cast<const char*>(tx_extra.data()), tx_extra.size());
-    std::istringstream iss(extra_str);
-    binary_archive<false> ar(iss);
+    binary_archive<false> ar{epee::to_span(tx_extra)};
 
-    bool eof = false;
     size_t processed = 0;
-    while (!eof)
+    do
     {
       tx_extra_field field;
       bool r = ::do_serialize(ar, field);
@@ -580,12 +610,8 @@ namespace cryptonote
         break;
       }
       tx_extra_fields.push_back(field);
-      processed = iss.tellg();
-
-      std::ios_base::iostate state = iss.rdstate();
-      eof = (EOF == iss.peek());
-      iss.clear(state);
-    }
+      processed = ar.getpos();
+    } while (!ar.eof());
     if (!::serialization::check_stream_state(ar))
     {
       MWARNING("failed to deserialize extra field. extra = " << string_tools::buff_to_hex_nodelimer(std::string(reinterpret_cast<const char*>(tx_extra.data()), tx_extra.size())));
@@ -712,29 +738,42 @@ namespace cryptonote
     return true;
   }
   //---------------------------------------------------------------
+  bool add_mm_merkle_root_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::hash& mm_merkle_root, size_t mm_merkle_tree_depth)
+  {
+    CHECK_AND_ASSERT_MES(mm_merkle_tree_depth < 32, false, "merge mining merkle tree depth should be less than 32");
+    size_t start_pos = tx_extra.size();
+    tx_extra.resize(tx_extra.size() + 3 + 32);
+    //write tag
+    tx_extra[start_pos] = TX_EXTRA_MERGE_MINING_TAG;
+    //write data size
+    ++start_pos;
+    tx_extra[start_pos] = 33;
+    //write depth varint (always one byte here)
+    ++start_pos;
+    tx_extra[start_pos] = mm_merkle_tree_depth;
+    //write data
+    ++start_pos;
+    memcpy(&tx_extra[start_pos], &mm_merkle_root, 32);
+    return true;
+  }
+  //---------------------------------------------------------------
   bool remove_field_from_tx_extra(std::vector<uint8_t>& tx_extra, const std::type_info &type)
   {
     if (tx_extra.empty())
       return true;
     std::string extra_str(reinterpret_cast<const char*>(tx_extra.data()), tx_extra.size());
-    std::istringstream iss(extra_str);
-    binary_archive<false> ar(iss);
+    binary_archive<false> ar{epee::strspan<std::uint8_t>(extra_str)};
     std::ostringstream oss;
     binary_archive<true> newar(oss);
 
-    bool eof = false;
-    while (!eof)
+    do
     {
       tx_extra_field field;
       bool r = ::do_serialize(ar, field);
       CHECK_AND_NO_ASSERT_MES_L1(r, false, "failed to deserialize extra field. extra = " << string_tools::buff_to_hex_nodelimer(std::string(reinterpret_cast<const char*>(tx_extra.data()), tx_extra.size())));
       if (field.type() != type)
         ::do_serialize(newar, field);
-
-      std::ios_base::iostate state = iss.rdstate();
-      eof = (EOF == iss.peek());
-      iss.clear(state);
-    }
+    } while (!ar.eof());
     CHECK_AND_NO_ASSERT_MES_L1(::serialization::check_stream_state(ar), false, "failed to deserialize extra field. extra = " << string_tools::buff_to_hex_nodelimer(std::string(reinterpret_cast<const char*>(tx_extra.data()), tx_extra.size())));
     tx_extra.clear();
     std::string s = oss.str();
@@ -1023,6 +1062,69 @@ namespace cryptonote
     std::string s = ss.str();
     insert_money_decimal_point(s, decimal_point);
     return s;
+  }
+  //---------------------------------------------------------------
+  uint64_t round_money_up(uint64_t amount, unsigned significant_digits)
+  {
+    // round monetary amount up with the requested amount of significant digits
+
+    CHECK_AND_ASSERT_THROW_MES(significant_digits > 0, "significant_digits must not be 0");
+    static_assert(sizeof(unsigned long long) == sizeof(uint64_t), "Unexpected unsigned long long size");
+
+    // we don't need speed, so we do it via text, as it's easier to get right
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%llu", (unsigned long long)amount);
+    const size_t len = strlen(buf);
+    if (len > significant_digits)
+    {
+      bool bump = false;
+      char *ptr;
+      for (ptr = buf + significant_digits; *ptr; ++ptr)
+      {
+        // bump digits by one if the following digits past significant digits were to be 5 or more
+        if (*ptr != '0')
+        {
+          bump = true;
+          *ptr = '0';
+        }
+      }
+      ptr = buf + significant_digits;
+      while (bump && ptr > buf)
+      {
+        --ptr;
+        // bumping a nine overflows
+        if (*ptr == '9')
+          *ptr = '0';
+        else
+        {
+          // bumping another digit means we can stop bumping (no carry)
+          ++*ptr;
+          bump = false;
+        }
+      }
+      if (bump)
+      {
+        // carry reached the highest digit, we need to add a 1 in front
+        size_t offset = strlen(buf);
+        for (size_t i = offset + 1; i > 0; --i)
+          buf[i] = buf[i - 1];
+        buf[0] = '1';
+      }
+    }
+    char *end = NULL;
+    errno = 0;
+    const unsigned long long ull = strtoull(buf, &end, 10);
+    CHECK_AND_ASSERT_THROW_MES(ull != ULONG_MAX || errno == 0, "Failed to parse rounded amount: " << buf);
+    CHECK_AND_ASSERT_THROW_MES(ull != 0 || amount == 0, "Overflow in rounding");
+    return ull;
+  }
+  //---------------------------------------------------------------
+  std::string round_money_up(const std::string &s, unsigned significant_digits)
+  {
+    uint64_t amount;
+    CHECK_AND_ASSERT_THROW_MES(parse_amount(amount, s), "Failed to parse amount: " << s);
+    amount = round_money_up(amount, significant_digits);
+    return print_money(amount);
   }
   //---------------------------------------------------------------
   crypto::hash get_blob_hash(const blobdata& blob)
@@ -1322,9 +1424,7 @@ namespace cryptonote
   //---------------------------------------------------------------
   bool parse_and_validate_block_from_blob(const blobdata_ref& b_blob, block& b, crypto::hash *block_hash)
   {
-    std::stringstream ss;
-    ss << b_blob;
-    binary_archive<false> ba(ss);
+    binary_archive<false> ba{epee::strspan<std::uint8_t>(b_blob)};
     bool r = ::serialization::serialize(ba, b);
     CHECK_AND_ASSERT_MES(r, false, "Failed to parse block from blob");
     b.invalidate_hashes();

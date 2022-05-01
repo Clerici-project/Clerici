@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -373,6 +373,40 @@ private:
       END_SERIALIZE()
     };
 
+    struct exported_transfer_details
+    {
+      crypto::public_key m_pubkey;
+      uint64_t m_internal_output_index;
+      uint64_t m_global_output_index;
+      crypto::public_key m_tx_pubkey;
+      union
+      {
+        struct
+        {
+          uint8_t m_spent: 1;
+          uint8_t m_frozen: 1;
+          uint8_t m_rct: 1;
+          uint8_t m_key_image_known: 1;
+          uint8_t m_key_image_request: 1; // view wallets: we want to request it; cold wallets: it was requested
+          uint8_t m_key_image_partial: 1;
+        };
+        uint8_t flags;
+      } m_flags;
+      uint64_t m_amount;
+      std::vector<crypto::public_key> m_additional_tx_keys;
+
+      BEGIN_SERIALIZE_OBJECT()
+        VERSION_FIELD(0)
+        FIELD(m_pubkey)
+        VARINT_FIELD(m_internal_output_index)
+        VARINT_FIELD(m_global_output_index)
+        FIELD(m_tx_pubkey)
+        FIELD(m_flags.flags)
+        VARINT_FIELD(m_amount)
+        FIELD(m_additional_tx_keys)
+      END_SERIALIZE()
+    };
+
     typedef std::vector<uint64_t> amounts_container;
     struct payment_details
     {
@@ -575,11 +609,15 @@ private:
     {
       std::vector<tx_construction_data> txes;
       std::pair<size_t, wallet2::transfer_container> transfers;
+      std::pair<size_t, std::vector<wallet2::exported_transfer_details>> new_transfers;
 
       BEGIN_SERIALIZE_OBJECT()
-        VERSION_FIELD(0)
+        VERSION_FIELD(1)
         FIELD(txes)
-        FIELD(transfers)
+        if (version >= 1)
+          FIELD(new_transfers)
+        else
+          FIELD(transfers)
       END_SERIALIZE()
     };
 
@@ -757,45 +795,20 @@ private:
      * to other participants
      */
     std::string make_multisig(const epee::wipeable_string &password,
-      const std::vector<std::string> &info,
-      uint32_t threshold);
+      const std::vector<std::string> &kex_messages,
+      const std::uint32_t threshold);
     /*!
-     * \brief Creates a multisig wallet
+     * \brief Increment the multisig key exchange round
      * \return empty if done, non empty if we need to send another string
      * to other participants
      */
-    std::string make_multisig(const epee::wipeable_string &password,
-      const std::vector<crypto::secret_key> &view_keys,
-      const std::vector<crypto::public_key> &spend_keys,
-      uint32_t threshold);
     std::string exchange_multisig_keys(const epee::wipeable_string &password,
-      const std::vector<std::string> &info);
+      const std::vector<std::string> &kex_messages);
     /*!
-     * \brief Any but first round of keys exchange
+     * \brief Get initial message to start multisig key exchange (before 'make_multisig()' is called)
+     * \return string to send to other participants
      */
-    std::string exchange_multisig_keys(const epee::wipeable_string &password,
-      std::unordered_set<crypto::public_key> pkeys,
-      std::vector<crypto::public_key> signers);
-    /*!
-     * \brief Finalizes creation of a multisig wallet
-     */
-    bool finalize_multisig(const epee::wipeable_string &password, const std::vector<std::string> &info);
-    /*!
-     * \brief Finalizes creation of a multisig wallet
-     */
-    bool finalize_multisig(const epee::wipeable_string &password, const std::unordered_set<crypto::public_key> &pkeys, std::vector<crypto::public_key> signers);
-    /*!
-     * Get a packaged multisig information string
-     */
-    std::string get_multisig_info() const;
-    /*!
-     * Verifies and extracts keys from a packaged multisig information string
-     */
-    static bool verify_multisig_info(const std::string &data, crypto::secret_key &skey, crypto::public_key &pkey);
-    /*!
-     * Verifies and extracts keys from a packaged multisig information string
-     */
-    static bool verify_extra_multisig_info(const std::string &data, std::unordered_set<crypto::public_key> &pkeys, crypto::public_key &signer);
+    std::string get_multisig_first_kex_msg() const;
     /*!
      * Export multisig info
      * This will generate and remember new k values
@@ -854,6 +867,9 @@ private:
 
     void explicit_refresh_from_block_height(bool expl) {m_explicit_refresh_from_block_height = expl;}
     bool explicit_refresh_from_block_height() const {return m_explicit_refresh_from_block_height;}
+
+    void max_reorg_depth(uint64_t depth) {m_max_reorg_depth = depth;}
+    uint64_t max_reorg_depth() const {return m_max_reorg_depth;}
 
     bool deinit();
     bool init(std::string daemon_address = "http://localhost:8080",
@@ -1226,6 +1242,8 @@ private:
     void ignore_outputs_below(uint64_t value) { m_ignore_outputs_below = value; }
     bool track_uses() const { return m_track_uses; }
     void track_uses(bool value) { m_track_uses = value; }
+    bool show_wallet_name_when_locked() const { return m_show_wallet_name_when_locked; }
+    void show_wallet_name_when_locked(bool value) { m_show_wallet_name_when_locked = value; }
     BackgroundMiningSetupType setup_background_mining() const { return m_setup_background_mining; }
     void setup_background_mining(BackgroundMiningSetupType value) { m_setup_background_mining = value; }
     uint32_t inactivity_lock_timeout() const { return m_inactivity_lock_timeout; }
@@ -1260,6 +1278,8 @@ private:
 
     std::string get_spend_proof(const crypto::hash &txid, const std::string &message);
     bool check_spend_proof(const crypto::hash &txid, const std::string &message, const std::string &sig_str);
+
+    void scan_tx(const std::vector<crypto::hash> &txids);
 
     /*!
      * \brief  Generates a proof that proves the reserve of unspent funds
@@ -1367,8 +1387,9 @@ private:
     bool verify_with_public_key(const std::string &data, const crypto::public_key &public_key, const std::string &signature) const;
 
     // Import/Export wallet data
-    std::pair<uint64_t, std::vector<tools::wallet2::transfer_details>> export_outputs(bool all = false) const;
+    std::pair<uint64_t, std::vector<tools::wallet2::exported_transfer_details>> export_outputs(bool all = false) const;
     std::string export_outputs_to_str(bool all = false) const;
+    size_t import_outputs(const std::pair<uint64_t, std::vector<tools::wallet2::exported_transfer_details>> &outputs);
     size_t import_outputs(const std::pair<uint64_t, std::vector<tools::wallet2::transfer_details>> &outputs);
     size_t import_outputs_from_str(const std::string &outputs_st);
     payment_container export_payments() const;
@@ -1406,8 +1427,9 @@ private:
     std::vector<std::pair<uint64_t, uint64_t>> estimate_backlog(const std::vector<std::pair<double, double>> &fee_levels);
     std::vector<std::pair<uint64_t, uint64_t>> estimate_backlog(uint64_t min_tx_weight, uint64_t max_tx_weight, const std::vector<uint64_t> &fees);
 
-    uint64_t estimate_fee(bool use_per_byte_fee, bool use_rct, int n_inputs, int mixin, int n_outputs, size_t extra_size, bool bulletproof, bool clsag, uint64_t base_fee, uint64_t fee_multiplier, uint64_t fee_quantization_mask) const;
+    uint64_t estimate_fee(bool use_per_byte_fee, bool use_rct, int n_inputs, int mixin, int n_outputs, size_t extra_size, bool bulletproof, bool clsag, bool bulletproof_plus, uint64_t base_fee, uint64_t fee_quantization_mask) const;
     uint64_t get_fee_multiplier(uint32_t priority, int fee_algorithm = -1);
+    uint64_t get_base_fee(uint32_t priority);
     uint64_t get_base_fee();
     uint64_t get_fee_quantization_mask();
     uint64_t get_min_ring_size();
@@ -1423,7 +1445,7 @@ private:
     bool get_rpc_payment_info(bool mining, bool &payment_required, uint64_t &credits, uint64_t &diff, uint64_t &credits_per_hash_found, cryptonote::blobdata &hashing_blob, uint64_t &height, uint64_t &seed_height, crypto::hash &seed_hash, crypto::hash &next_seed_hash, uint32_t &cookie);
     bool daemon_requires_payment();
     bool make_rpc_payment(uint32_t nonce, uint32_t cookie, uint64_t &credits, uint64_t &balance);
-    bool search_for_rpc_payment(uint64_t credits_target, const std::function<bool(uint64_t, uint64_t)> &startfunc, const std::function<bool(unsigned)> &contfunc, const std::function<bool(uint64_t)> &foundfunc = NULL, const std::function<void(const std::string&)> &errorfunc = NULL);
+    bool search_for_rpc_payment(uint64_t credits_target, uint32_t n_threads, const std::function<bool(uint64_t, uint64_t)> &startfunc, const std::function<bool(unsigned)> &contfunc, const std::function<bool(uint64_t)> &foundfunc = NULL, const std::function<void(const std::string&)> &errorfunc = NULL);
     template<typename T> void handle_payment_changes(const T &res, std::true_type) {
       if (res.status == CORE_RPC_STATUS_OK || res.status == CORE_RPC_STATUS_PAYMENT_REQUIRED)
         m_rpc_payment_state.credits = res.credits;
@@ -1472,7 +1494,6 @@ private:
     void set_attribute(const std::string &key, const std::string &value);
     bool get_attribute(const std::string &key, std::string &value) const;
 
-    crypto::public_key get_multisig_signer_public_key(const crypto::secret_key &spend_skey) const;
     crypto::public_key get_multisig_signer_public_key() const;
     crypto::public_key get_multisig_signing_public_key(size_t idx) const;
     crypto::public_key get_multisig_signing_public_key(const crypto::secret_key &skey) const;
@@ -1546,6 +1567,7 @@ private:
     void finish_rescan_bc_keep_key_images(uint64_t transfer_height, const crypto::hash &hash);
     void enable_dns(bool enable) { m_use_dns = enable; }
     void set_offline(bool offline = true);
+    bool is_offline() const { return m_offline; }
 
     uint64_t credits() const { return m_rpc_payment_state.credits; }
     void credit_report(uint64_t &expected_spent, uint64_t &discrepancy) const { expected_spent = m_rpc_payment_state.expected_spent; discrepancy = m_rpc_payment_state.discrepancy; }
@@ -1635,12 +1657,6 @@ private:
     bool get_rct_distribution(uint64_t &start_height, std::vector<uint64_t> &distribution);
 
     uint64_t get_segregation_fork_height() const;
-    void unpack_multisig_info(const std::vector<std::string>& info,
-      std::vector<crypto::public_key> &public_keys,
-      std::vector<crypto::secret_key> &secret_keys) const;
-    bool unpack_extra_multisig_info(const std::vector<std::string>& info,
-      std::vector<crypto::public_key> &signers,
-      std::unordered_set<crypto::public_key> &pkeys) const;
 
     void cache_tx_data(const cryptonote::transaction& tx, const crypto::hash &txid, tx_cache_data &tx_cache_data) const;
     std::shared_ptr<std::map<std::pair<uint64_t, uint64_t>, size_t>> create_output_tracker_cache() const;
@@ -1728,6 +1744,7 @@ private:
     bool m_explicit_refresh_from_block_height;
     bool m_confirm_non_default_ring_size;
     AskPasswordType m_ask_password;
+    uint64_t m_max_reorg_depth;
     uint32_t m_min_output_count;
     uint64_t m_min_output_value;
     bool m_merge_destinations;
@@ -1742,6 +1759,7 @@ private:
     uint64_t m_ignore_outputs_above;
     uint64_t m_ignore_outputs_below;
     bool m_track_uses;
+    bool m_show_wallet_name_when_locked;
     uint32_t m_inactivity_lock_timeout;
     BackgroundMiningSetupType m_setup_background_mining;
     bool m_persistent_rpc_client_id;

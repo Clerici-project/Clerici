@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2020, The Monero Project
+# Copyright (c) 2014-2022, The Monero Project
 #
 # All rights reserved.
 #
@@ -31,8 +31,7 @@ set(simplewallet_sources
 
 set(simplewallet_headers)
 
-set(simplewallet_private_headers
-  simplewallet.h)
+monero_find_all_headers(simplewallet_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")
 
 monero_private_headers(simplewallet
   ${simplewallet_private_headers})
@@ -62,5 +61,5 @@ target_link_libraries(simplewallet
     ${EXTRA_LIBRARIES})
 set_property(TARGET simplewallet
   PROPERTY
-    OUTPUT_NAME "wallet-cli")
+    OUTPUT_NAME "monero-wallet-cli")
 install(TARGETS simplewallet DESTINATION bin)

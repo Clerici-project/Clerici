@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -59,7 +59,7 @@
 #include "include_base_utils.h"
 #include "file_io_utils.h"
 #include "wipeable_string.h"
-#include "misc_os_dependent.h"
+#include "time_helper.h"
 using namespace epee;
 
 #include "crypto/crypto.h"
@@ -1009,13 +1009,13 @@ std::string get_nix_version_display_string()
     for (char c: val)
     {
       if (c == '*')
-        newval += escape ? "*" : ".*";
+        newval += escape ? "*" : ".*", escape = false;
       else if (c == '?')
-        newval += escape ? "?" : ".";
+        newval += escape ? "?" : ".", escape = false;
       else if (c == '\\')
         newval += '\\', escape = !escape;
       else
-        newval += c;
+        newval += c, escape = false;
     }
     return newval;
   }

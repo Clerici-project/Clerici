@@ -49,7 +49,6 @@
 #include <boost/asio/ssl.hpp>
 #include <boost/array.hpp>
 #include <boost/enable_shared_from_this.hpp>
-#include <boost/interprocess/detail/atomic.hpp>
 #include <boost/thread/thread.hpp>
 #include "byte_slice.h"
 #include "net_utils_base.h"
@@ -265,6 +264,12 @@ namespace net_utils
     template<class t_callback>
     bool connect_async(const std::string& adr, const std::string& port, uint32_t conn_timeot, const t_callback &cb, const std::string& bind_ip = "0.0.0.0", epee::net_utils::ssl_support_t ssl_support = epee::net_utils::ssl_support_t::e_ssl_support_autodetect);
 
+    boost::asio::ssl::context& get_ssl_context() noexcept
+    {
+      assert(m_state != nullptr);
+      return m_state->ssl_context;
+    }
+
     typename t_protocol_handler::config_type& get_config_object()
     {
       assert(m_state != nullptr); // always set in constructor
@@ -387,7 +392,7 @@ namespace net_utils
     std::vector<boost::shared_ptr<boost::thread> > m_threads;
     boost::thread::id m_main_thread_id;
     critical_section m_threads_lock;
-    volatile uint32_t m_thread_index; // TODO change to std::atomic
+    std::atomic<uint32_t> m_thread_index;
 
     t_connection_type m_connection_type;
 

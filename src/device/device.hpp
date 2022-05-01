@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2020, The Monero Project
+// Copyright (c) 2017-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -91,7 +91,6 @@ namespace hw {
     public:
 
         device(): mode(NONE)  {}
-        device(const device &hwdev) {}
         virtual ~device()   {}
 
         explicit virtual operator bool() const = 0;

@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2020, The Monero Project
+# Copyright (c) 2014-2022, The Monero Project
 # 
 # All rights reserved.
 # 
@@ -80,17 +80,22 @@ file(COPY
   data/signed_monero_tx
   DESTINATION data)
 
-add_subdirectory(core_tests)
-add_subdirectory(fuzz)
-add_subdirectory(crypto)
-add_subdirectory(functional_tests)
-add_subdirectory(performance_tests)
-add_subdirectory(core_proxy)
-add_subdirectory(unit_tests)
-add_subdirectory(difficulty)
-add_subdirectory(block_weight)
-add_subdirectory(hash)
-add_subdirectory(net_load_tests)
+if (CMAKE_BUILD_TYPE STREQUAL "fuzz" OR OSSFUZZ)
+  add_subdirectory(fuzz)
+else ()
+  add_subdirectory(core_tests)
+  add_subdirectory(fuzz)
+  add_subdirectory(crypto)
+  add_subdirectory(functional_tests)
+  add_subdirectory(performance_tests)
+  add_subdirectory(core_proxy)
+  add_subdirectory(unit_tests)
+  add_subdirectory(difficulty)
+  add_subdirectory(block_weight)
+  add_subdirectory(hash)
+  add_subdirectory(net_load_tests)
+endif()
+
 if (BUILD_GUI_DEPS)
   add_subdirectory(libwallet_api_tests)
 endif()
@@ -106,7 +111,7 @@ set(hash_targets_sources
 
 set(hash_targets_headers)
 
-add_executable(hash-target-tests
+monero_add_minimal_executable(hash-target-tests
   ${hash_targets_sources}
   ${hash_targets_headers})
 target_link_libraries(hash-target-tests
@@ -149,7 +154,7 @@ foreach(BENCH IN LISTS MONERO_WALLET_CRYPTO_BENCH)
 endforeach ()
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/benchmark.h.in" "${MONERO_GENERATED_HEADERS_DIR}/tests/benchmark.h")
-add_executable(monero-wallet-crypto-bench benchmark.cpp ${BENCH_OBJECTS})
+monero_add_minimal_executable(monero-wallet-crypto-bench benchmark.cpp ${BENCH_OBJECTS})
 target_link_libraries(monero-wallet-crypto-bench cncrypto)
 
 add_test(NAME wallet-crypto-bench COMMAND monero-wallet-crypto-bench)

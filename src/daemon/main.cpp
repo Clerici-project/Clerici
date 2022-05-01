@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 //
 // All rights reserved.
 //
@@ -100,8 +100,8 @@ uint16_t parse_public_rpc_port(const po::variables_map &vm)
 
   if (address->is_loopback() || address->is_local())
   {
-    MLOG_RED(el::Level::Warning, "--" << public_node_arg.name
-      << " is enabled, but RPC server " << address->str()
+    MLOG_RED(el::Level::Warning, "--" << public_node_arg.name 
+      << " is enabled, but RPC server " << address->str() 
       << " may be unreachable from outside, please check RPC server bind address");
   }
 
@@ -122,65 +122,9 @@ bool isFat32(const wchar_t* root_path)
 }
 #endif
 
-void print_genesis_tx_hex(uint8_t nettype) {
-
-using namespace cryptonote;
-
-account_base miner_acc1;
-miner_acc1.generate();
-
-std::cout << "Gennerating miner wallet..." << std::endl;
-std::cout << "Miner account address:" << std::endl;
-std::cout << cryptonote::get_account_address_as_str((network_type)nettype, false, miner_acc1.get_keys().m_account_address);
-std::cout << std::endl << "Miner spend secret key:"  << std::endl;
-epee::to_hex::formatted(std::cout, epee::as_byte_span(miner_acc1.get_keys().m_spend_secret_key));
-std::cout << std::endl << "Miner view secret key:" << std::endl;
-epee::to_hex::formatted(std::cout, epee::as_byte_span(miner_acc1.get_keys().m_view_secret_key));
-std::cout << std::endl << std::endl;
-
-//Create file with miner keys information
-auto t = std::time(nullptr);
-auto tm = *std::localtime(&t);
-std::stringstream key_fine_name_ss;
-key_fine_name_ss << "./miner01_keys" << std::put_time(&tm, "%Y%m%d%H%M%S") << ".dat";
-std::string key_file_name = key_fine_name_ss.str();
-std::ofstream miner_key_file;
-miner_key_file.open (key_file_name);
-miner_key_file << "Miner account address:" << std::endl;
-miner_key_file << cryptonote::get_account_address_as_str((network_type)nettype, false, miner_acc1.get_keys().m_account_address);
-miner_key_file << std::endl<< "Miner spend secret key:"  << std::endl;
-epee::to_hex::formatted(miner_key_file, epee::as_byte_span(miner_acc1.get_keys().m_spend_secret_key));
-miner_key_file << std::endl << "Miner view secret key:" << std::endl;
-epee::to_hex::formatted(miner_key_file, epee::as_byte_span(miner_acc1.get_keys().m_view_secret_key));
-miner_key_file << std::endl << std::endl;
-miner_key_file.close();
-
-
-//Prepare genesis_tx
-cryptonote::transaction tx_genesis;
-cryptonote::construct_miner_tx(0, 0, 0, 10, 0, miner_acc1.get_keys().m_account_address, tx_genesis);
-
-std::cout << "Object:" << std::endl;
-std::cout << obj_to_json_str(tx_genesis) << std::endl << std::endl;
-
-
-std::stringstream ss;
-binary_archive<true> ba(ss);
-::serialization::serialize(ba, tx_genesis);
-std::string tx_hex = ss.str();
-std::cout << "Insert this line into your coin configuration file: " << std::endl;
-std::cout << "std::string const GENESIS_TX = \"" << string_tools::buff_to_hex_nodelimer(tx_hex) << "\";" << std::endl;
-
-return;
-}
-
 int main(int argc, char const * argv[])
 {
   try {
-	// Print our fork's genesis block, comment out after modifying cryptonote_config.h GENESIS_TX constant
-	// Be sure all GENESIS_TX constants are EMPTY, e.g. = ""; before un-commenting the next 2 lines below
-	//print_genesis_tx_hex(0);    // 0 for mainnet, 1 for testnet
-	//return 0;		    // building both is optional, testnet can adopt mainnet genesis TX hash.
 
     // TODO parse the debug options like set log level right here at start
 
@@ -216,8 +160,6 @@ int main(int argc, char const * argv[])
       command_line::add_arg(core_settings, daemon_args::arg_zmq_pub);
       command_line::add_arg(core_settings, daemon_args::arg_zmq_rpc_disabled);
 
-	// --print-genesis-tx was removed
-
       daemonizer::init_options(hidden_options, visible_options);
       daemonize::t_executor::init_options(core_settings);
 
@@ -248,7 +190,7 @@ int main(int argc, char const * argv[])
 
     if (command_line::get_arg(vm, command_line::arg_help))
     {
-      std::cout << "CLC '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
+      std::cout << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
       std::cout << "Usage: " + std::string{argv[0]} + " [options|settings] [daemon_command...]" << std::endl << std::endl;
       std::cout << visible_options << std::endl;
       return 0;
@@ -257,7 +199,7 @@ int main(int argc, char const * argv[])
     // Monero Version
     if (command_line::get_arg(vm, command_line::arg_version))
     {
-      std::cout << "CLC '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL;
+      std::cout << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL;
       return 0;
     }
 
@@ -351,7 +293,7 @@ int main(int argc, char const * argv[])
       tools::set_max_concurrency(command_line::get_arg(vm, daemon_args::arg_max_concurrency));
 
     // logging is now set up
-    MGINFO("CLC '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")");
+    MGINFO("Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")");
 
     // If there are positional options, we're running a daemon command
     {

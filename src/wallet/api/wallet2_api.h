@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -790,7 +790,7 @@ struct Wallet
     /**
      * @brief makeMultisig - switches wallet in multisig state. The one and only creation phase for N / N wallets
      * @param info - vector of multisig infos from other participants obtained with getMulitisInfo call
-     * @param threshold - number of required signers to make valid transaction. Must be equal to number of participants (N) or N - 1
+     * @param threshold - number of required signers to make valid transaction. Must be <= number of participants
      * @return in case of N / N wallets returns empty string since no more key exchanges needed. For N - 1 / N wallets returns base58 encoded extra multisig info
      */
     virtual std::string makeMultisig(const std::vector<std::string>& info, uint32_t threshold) = 0;
@@ -800,12 +800,6 @@ struct Wallet
      * @return new info string if more rounds required or an empty string if wallet creation is done
      */
     virtual std::string exchangeMultisigKeys(const std::vector<std::string> &info) = 0;
-    /**
-     * @brief finalizeMultisig - finalizes N - 1 / N multisig wallets creation
-     * @param extraMultisigInfo - wallet participants' extra multisig info obtained with makeMultisig call
-     * @return true if success
-     */
-    virtual bool finalizeMultisig(const std::vector<std::string>& extraMultisigInfo) = 0;
     /**
      * @brief exportMultisigImages - exports transfers' key images
      * @param images - output paramter for hex encoded array of images
@@ -994,7 +988,7 @@ struct Wallet
      * \param message - the message to sign (arbitrary byte data)
      * \return the signature
      */
-    virtual std::string signMessage(const std::string &message) = 0;
+    virtual std::string signMessage(const std::string &message, const std::string &address = "") = 0;
     /*!
      * \brief verifySignedMessage - verify a signature matches a given message
      * \param message - the message (arbitrary byte data)
@@ -1035,6 +1029,7 @@ struct Wallet
     * \param offline - true/false
     */
     virtual void setOffline(bool offline) = 0;
+    virtual bool isOffline() const = 0;
     
     //! blackballs a set of outputs
     virtual bool blackballOutputs(const std::vector<std::string> &outputs, bool add) = 0;
@@ -1086,6 +1081,15 @@ struct Wallet
 
     //! shows address on device display
     virtual void deviceShowAddress(uint32_t accountIndex, uint32_t addressIndex, const std::string &paymentId) = 0;
+
+    //! attempt to reconnect to hardware device
+    virtual bool reconnectDevice() = 0;
+
+    //! get bytes received
+    virtual uint64_t getBytesReceived() = 0;
+
+    //! get bytes sent
+    virtual uint64_t getBytesSent() = 0;
 };
 
 /**
@@ -1364,6 +1368,3 @@ struct WalletManagerFactory
 
 
 }
-
-namespace Bitmonero = Monero;
-

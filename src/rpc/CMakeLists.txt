@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2020, The Monero Project
+# Copyright (c) 2014-2022, The Monero Project
 #
 # All rights reserved.
 #
@@ -39,7 +39,7 @@ set(rpc_sources
   core_rpc_server.cpp
   rpc_payment.cpp
   rpc_version_str.cpp
-  instanciations)
+  instanciations.cpp)
 
 set(daemon_messages_sources
   message.cpp
@@ -66,7 +66,7 @@ set(rpc_pub_headers zmq_pub.h)
 
 set(daemon_rpc_server_headers)
 
-set(rpc_daemon_private_headers
+set(rpc_private_headers
   bootstrap_daemon.h
   core_rpc_server.h
   rpc_payment.h

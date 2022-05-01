@@ -1,4 +1,4 @@
-packages:=boost openssl zeromq libiconv
+packages:=boost openssl zeromq libiconv expat ldns unbound
 
 # ccache is useless in gitian builds
 ifneq ($(GITIAN),1)

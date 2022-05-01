@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -88,7 +88,7 @@ namespace cryptonote
 // advance which version they will stop working with
 // Don't go over 32767 for any of these
 #define CORE_RPC_VERSION_MAJOR 3
-#define CORE_RPC_VERSION_MINOR 9
+#define CORE_RPC_VERSION_MINOR 10
 #define MAKE_CORE_RPC_VERSION(major,minor) (((major)<<16)|(minor))
 #define CORE_RPC_VERSION MAKE_CORE_RPC_VERSION(CORE_RPC_VERSION_MAJOR, CORE_RPC_VERSION_MINOR)
 
@@ -350,6 +350,7 @@ namespace cryptonote
       bool in_pool;
       bool double_spend_seen;
       uint64_t block_height;
+      uint64_t confirmations;
       uint64_t block_timestamp;
       uint64_t received_timestamp;
       std::vector<uint64_t> output_indices;
@@ -367,6 +368,7 @@ namespace cryptonote
         if (!this_ref.in_pool)
         {
           KV_SERIALIZE(block_height)
+          KV_SERIALIZE(confirmations)
           KV_SERIALIZE(block_timestamp)
           KV_SERIALIZE(output_indices)
         }
@@ -687,6 +689,7 @@ namespace cryptonote
       bool busy_syncing;
       std::string version;
       bool synchronized;
+      bool restricted;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE_PARENT(rpc_access_response_base)
@@ -728,6 +731,7 @@ namespace cryptonote
         KV_SERIALIZE(busy_syncing)
         KV_SERIALIZE(version)
         KV_SERIALIZE(synchronized)
+        KV_SERIALIZE(restricted)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;
@@ -1008,6 +1012,52 @@ namespace cryptonote
     typedef epee::misc_utils::struct_init<request_t> request;
 
     typedef std::string response;
+  };
+
+  struct COMMAND_RPC_ADD_AUX_POW
+  {
+    struct aux_pow_t
+    {
+      std::string id;
+      std::string hash;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(id)
+        KV_SERIALIZE(hash)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct request_t: public rpc_request_base
+    {
+      blobdata blocktemplate_blob;
+      std::vector<aux_pow_t> aux_pow;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE_PARENT(rpc_request_base)
+        KV_SERIALIZE(blocktemplate_blob)
+        KV_SERIALIZE(aux_pow)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t: public rpc_response_base
+    {
+      blobdata blocktemplate_blob;
+      blobdata blockhashing_blob;
+      std::string merkle_root;
+      uint32_t merkle_tree_depth;
+      std::vector<aux_pow_t> aux_pow;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE_PARENT(rpc_response_base)
+        KV_SERIALIZE(blocktemplate_blob)
+        KV_SERIALIZE(blockhashing_blob)
+        KV_SERIALIZE(merkle_root)
+        KV_SERIALIZE(merkle_tree_depth)
+        KV_SERIALIZE(aux_pow)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
   };
 
   struct COMMAND_RPC_SUBMITBLOCK
@@ -2141,11 +2191,13 @@ namespace cryptonote
     {
       uint64_t fee;
       uint64_t quantization_mask;
+      std::vector<uint64_t> fees;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE_PARENT(rpc_access_response_base)
         KV_SERIALIZE(fee)
         KV_SERIALIZE_OPT(quantization_mask, (uint64_t)1)
+        KV_SERIALIZE(fees)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;

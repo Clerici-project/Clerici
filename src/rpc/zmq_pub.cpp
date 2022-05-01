@@ -1,4 +1,5 @@
-// Copyright (c) 2020, The Monero Project
+// Copyright (c) 2020-2022, The Monero Project
+
 //
 // All rights reserved.
 //
@@ -259,7 +260,7 @@ namespace
   void add_subscriptions(std::array<std::size_t, N>& subs, const epee::span<const context<T>> range, context<T> const* const first)
   {
     assert(range.size() <= N);
-    assert(range.begin() - first <= N - range.size());
+    assert((unsigned long)(range.begin() - first) <= N - range.size());
 
     for (const auto& ctx : range)
     {
@@ -272,7 +273,7 @@ namespace
   void remove_subscriptions(std::array<std::size_t, N>& subs, const epee::span<const context<T>> range, context<T> const* const first)
   {
     assert(range.size() <= N);
-    assert(range.begin() - first <= N - range.size());
+    assert((unsigned long)(range.begin() - first) <= N - range.size());
 
     for (const auto& ctx : range)
     {

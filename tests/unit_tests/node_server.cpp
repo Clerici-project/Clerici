@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -251,7 +251,6 @@ TEST(ban, subnet)
 
 TEST(ban, ignores_port)
 {
-  time_t seconds;
   test_core pr_core;
   cryptonote::t_cryptonote_protocol_handler<test_core> cprotocol(pr_core, NULL);
   Server server(cprotocol);
@@ -305,6 +304,9 @@ TEST(node_server, bind_same_p2p_port)
 
     Relevant part about REUSEADDR from man:
     https://www.man7.org/linux/man-pages/man7/ip.7.html
+
+    For Mac OSX, set the following alias, before running the test, or else it will fail:
+    sudo ifconfig lo0 alias 127.0.0.2
     */
     vm.find(nodetool::arg_p2p_bind_ip.name)->second   = boost::program_options::variable_value(std::string("127.0.0.2"), false);
     vm.find(nodetool::arg_p2p_bind_port.name)->second = boost::program_options::variable_value(std::string(port), false);
@@ -451,7 +453,6 @@ TEST(cryptonote_protocol_handler, race_condition)
   };
   struct net_node_t: commands_handler_t, p2p_endpoint_t {
     using span_t = epee::span<const uint8_t>;
-    using string_t = std::string;
     using zone_t = epee::net_utils::zone;
     using uuid_t = boost::uuids::uuid;
     using relay_t = cryptonote::relay_method;
@@ -466,7 +467,7 @@ TEST(cryptonote_protocol_handler, race_condition)
     };
     shared_state_ptr shared_state;
     core_protocol_ptr core_protocol;
-    virtual int invoke(int command, const span_t in, string_t &out, context_t &context) override {
+    virtual int invoke(int command, const span_t in, epee::byte_stream &out, context_t &context) override {
       if (core_protocol) {
         if (command == messages::handshake::ID) {
           return epee::net_utils::buff_to_t_adapter<void, typename messages::handshake::request, typename messages::handshake::response>(
@@ -490,7 +491,7 @@ TEST(cryptonote_protocol_handler, race_condition)
     virtual int notify(int command, const span_t in, context_t &context) override {
       if (core_protocol) {
         bool handled;
-        string_t out;
+        epee::byte_stream out;
         return core_protocol->handle_invoke_map(true, command, in, out, context, handled);
       }
       else
@@ -526,22 +527,16 @@ TEST(cryptonote_protocol_handler, race_condition)
       else
         return {};
     }
-    virtual bool invoke_command_to_peer(int command, const span_t in, string_t& out, const contexts::basic& context) override {
+    virtual bool invoke_notify_to_peer(int command, epee::levin::message_writer in, const contexts::basic& context) override {
       if (shared_state)
-        return shared_state->invoke(command, in, out, context.m_connection_id);
+        return shared_state->send(in.finalize_notify(command), context.m_connection_id);
       else
         return {};
     }
-    virtual bool invoke_notify_to_peer(int command, const span_t in, const contexts::basic& context) override {
-      if (shared_state)
-        return shared_state->notify(command, in, context.m_connection_id);
-      else
-        return {};
-    }
-    virtual bool relay_notify_to_list(int command, const span_t in, connections_t connections) override {
+    virtual bool relay_notify_to_list(int command, epee::levin::message_writer in, connections_t connections) override {
       if (shared_state) {
         for (auto &e: connections)
-          shared_state->notify(command, in, e.second);
+          shared_state->send(in.finalize_notify(command), e.second);
       }
       return {};
     }
@@ -948,12 +943,13 @@ TEST(node_server, race_condition)
     using connections_t = std::list<cryptonote::connection_info>;
     using block_queue_t = cryptonote::block_queue;
     using stripes_t = std::pair<uint32_t, uint32_t>;
+    using byte_stream_t = epee::byte_stream;
     struct core_events_t: cryptonote::i_core_events {
       uint64_t get_current_blockchain_height() const override { return {}; }
       bool is_synchronized() const override { return {}; }
       void on_transactions_relayed(blobs_t blobs, relay_t relay) override {}
     };
-    int handle_invoke_map(bool is_notify, int command, const span_t in, string_t &out, context_t &context, bool &handled) {
+    int handle_invoke_map(bool is_notify, int command, const span_t in, byte_stream_t &out, context_t &context, bool &handled) {
       return {};
     }
     bool on_idle() {
@@ -1059,8 +1055,8 @@ TEST(node_server, race_condition)
     using event_t = epee::simple_event;
     struct command_handler_t: epee::levin::levin_commands_handler<context_t> {
       using span_t = epee::span<const uint8_t>;
-      using string_t = std::string;
-      int invoke(int, const span_t, string_t &, context_t &) override { return {}; }
+      using byte_stream_t = epee::byte_stream;
+      int invoke(int, const span_t, byte_stream_t &, context_t &) override { return {}; }
       int notify(int, const span_t, context_t &) override { return {}; }
       void callback(context_t &) override {}
       void on_connection_new(context_t &) override {}

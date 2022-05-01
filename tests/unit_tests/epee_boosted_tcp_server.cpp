@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -151,7 +151,7 @@ TEST(test_epee_connection, test_lifetime)
       delay(delay),
       on_connection_close_f(on_connection_close_f)
     {}
-    virtual int invoke(int, const epee::span<const uint8_t>, std::string&, context_t&) override { epee::misc_utils::sleep_no_w(delay); return {}; }
+    virtual int invoke(int, const epee::span<const uint8_t>, epee::byte_stream&, context_t&) override { epee::misc_utils::sleep_no_w(delay); return {}; }
     virtual int notify(int, const epee::span<const uint8_t>, context_t&) override { return {}; }
     virtual void callback(context_t&) override {}
     virtual void on_connection_new(context_t&) override {}
@@ -280,7 +280,7 @@ TEST(test_epee_connection, test_lifetime)
     for (auto i = 0; i < N; ++i) {
       tag = create_connection();
       ASSERT_TRUE(shared_state->get_connections_count() == 1);
-      success = shared_state->invoke_async(1, {}, tag, [](int, const epee::span<const uint8_t>, context_t&){}, TIMEOUT);
+      success = shared_state->invoke_async(1, epee::levin::message_writer{}, tag, [](int, const epee::span<const uint8_t>, context_t&){}, TIMEOUT);
       ASSERT_TRUE(success);
       while (shared_state->sock_count == 1) {
         success = shared_state->foreach_connection([&shared_state, &tag](context_t&){
@@ -318,7 +318,8 @@ TEST(test_epee_connection, test_lifetime)
             connection_ptr conn;
             {
               lock_guard_t guard(shared_conn->lock);
-              conn = std::move(shared_conn->conn.lock());
+              conn = shared_conn->conn.lock();
+              shared_conn->conn.reset();
             }
             if (conn)
               conn->cancel();

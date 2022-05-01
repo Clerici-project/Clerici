@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2020, The Monero Project
+// Copyright (c) 2017-2022, The Monero Project
 //
 // All rights reserved.
 //
@@ -31,6 +31,7 @@
 #include "memwipe.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/regex.hpp>
 
 namespace hw {
@@ -44,7 +45,10 @@ namespace trezor {
 
     const uint32_t device_trezor_base::DEFAULT_BIP44_PATH[] = {0x8000002c, 0x80000080};
 
-    device_trezor_base::device_trezor_base(): m_callback(nullptr), m_last_msg_type(messages::MessageType_Success) {
+    device_trezor_base::device_trezor_base(): m_callback(nullptr), m_last_msg_type(messages::MessageType_Success),
+                                              m_reply_with_empty_passphrase(false),
+                                              m_always_use_empty_passphrase(false),
+                                              m_seen_passphrase_entry_message(false) {
 #ifdef WITH_TREZOR_DEBUGGING
       m_debug = false;
 #endif
@@ -154,6 +158,9 @@ namespace trezor {
       TREZOR_AUTO_LOCK_DEVICE();
       m_device_session_id.clear();
       m_features.reset();
+      m_seen_passphrase_entry_message = false;
+      m_reply_with_empty_passphrase = false;
+      m_always_use_empty_passphrase = false;
 
       if (m_transport){
         try {
@@ -475,6 +482,7 @@ namespace trezor {
         return;
       }
 
+      m_seen_passphrase_entry_message = true;
       bool on_device = true;
       if (msg->has__on_device() && !msg->_on_device()){
         on_device = false;  // do not enter on device, old devices.
@@ -490,19 +498,21 @@ namespace trezor {
       }
 
       boost::optional<epee::wipeable_string> passphrase;
-      TREZOR_CALLBACK_GET(passphrase, on_passphrase_request, on_device);
+      if (m_reply_with_empty_passphrase || m_always_use_empty_passphrase) {
+        MDEBUG("Answering passphrase prompt with an empty passphrase, always use empty: " << m_always_use_empty_passphrase);
+        on_device = false;
+        passphrase = epee::wipeable_string("");
+      } else if (m_passphrase){
+        MWARNING("Answering passphrase prompt with a stored passphrase (do not use; passphrase can be seen by a potential malware / attacker)");
+        on_device = false;
+        passphrase = epee::wipeable_string(m_passphrase.get());
+      } else {
+        TREZOR_CALLBACK_GET(passphrase, on_passphrase_request, on_device);
+      }
 
       messages::common::PassphraseAck m;
       m.set_on_device(on_device);
       if (!on_device) {
-        if (!passphrase && m_passphrase) {
-          passphrase = m_passphrase;
-        }
-
-        if (m_passphrase) {
-          m_passphrase = boost::none;
-        }
-
         if (passphrase) {
           m.set_allocated_passphrase(new std::string(passphrase->data(), passphrase->size()));
         }

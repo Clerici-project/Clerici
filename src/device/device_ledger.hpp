@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2020, The Monero Project
+// Copyright (c) 2017-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -44,8 +44,8 @@ namespace hw {
 
     /* Minimal supported version */
     #define MINIMAL_APP_VERSION_MAJOR    1
-    #define MINIMAL_APP_VERSION_MINOR    7
-    #define MINIMAL_APP_VERSION_MICRO    8
+    #define MINIMAL_APP_VERSION_MINOR    6
+    #define MINIMAL_APP_VERSION_MICRO    0
 
     #define VERSION(M,m,u)       ((M)<<16|(m)<<8|(u))
     #define VERSION_MAJOR(v)     (((v)>>16)&0xFF)
@@ -166,8 +166,6 @@ namespace hw {
         void send_secret(const unsigned char sec[32], int &offset);
         void receive_secret(unsigned char sec[32], int &offset);
 
-        // hw running mode
-        device_mode mode;
         bool tx_in_progress;
 
         // map public destination key to ephemeral destination key

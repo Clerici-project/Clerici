@@ -29,6 +29,7 @@
 #pragma once 
 
 #include "misc_language.h"
+#include "misc_log_ex.h"
 #include "portable_storage_base.h"
 #include "portable_storage_bin_utils.h"
 
@@ -154,6 +155,18 @@ namespace epee
       static_assert(std::is_pod<t_pod_type>::value, "POD type expected");
       read(&pod_val, sizeof(pod_val));
       pod_val = CONVERT_POD(pod_val);
+    }
+    
+    template<>
+    void throwable_buffer_reader::read<bool>(bool& pod_val)
+    {
+      RECURSION_LIMITATION();
+      static_assert(std::is_pod<bool>::value, "POD type expected");
+      static_assert(sizeof(bool) == sizeof(uint8_t), "We really shouldn't use bool directly in serialization code. Replace it with uint8_t if this assert triggers!");
+      uint8_t t;
+      read(&t, sizeof(t));
+      CHECK_AND_ASSERT_THROW_MES(t <= 1, "Invalid bool value " << t);
+      pod_val = (t != 0);
     }
     
     template<class t_type>

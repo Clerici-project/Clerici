@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 //
 // All rights reserved.
 //
@@ -51,6 +51,7 @@
 #include "string_tools.h"
 #include "rolling_median.h"
 #include "cryptonote_basic/cryptonote_basic.h"
+#include "common/powerof.h"
 #include "common/util.h"
 #include "cryptonote_protocol/cryptonote_protocol_defs.h"
 #include "rpc/core_rpc_server_commands_defs.h"
@@ -613,7 +614,10 @@ namespace cryptonote
      *
      * @return the fee quantized mask
      */
-    static uint64_t get_fee_quantization_mask();
+    static uint64_t get_fee_quantization_mask()
+    {
+      return tools::PowerOf<10, CRYPTONOTE_DISPLAY_DECIMAL_POINT - PER_KB_FEE_QUANTIZATION_DECIMALS>::Value;
+    }
 
     /**
      * @brief get dynamic per kB or byte fee for a given block weight
@@ -644,6 +648,22 @@ namespace cryptonote
      * @return the fee estimate
      */
     uint64_t get_dynamic_base_fee_estimate(uint64_t grace_blocks) const;
+    void get_dynamic_base_fee_estimate_2021_scaling(uint64_t grace_blocks, uint64_t base_reward, uint64_t Mnw, uint64_t Mlw, std::vector<uint64_t> &fees) const;
+
+    /**
+     * @brief get four levels of dynamic per byte fee estimate for the next few blocks
+     *
+     * The dynamic fee is based on the block weight in a past window, and
+     * the current block reward. It is expressed per byte, and is based on
+     * https://github.com/ArticMine/Monero-Documents/blob/master/MoneroScaling2021-02.pdf
+     * This function calculates an estimate for a dynamic fee which will be
+     * valid for the next grace_blocks
+     *
+     * @param grace_blocks number of blocks we want the fee to be valid for
+     *
+     * @return the fee estimates (4 of them)
+     */
+    void get_dynamic_base_fee_estimate_2021_scaling(uint64_t grace_blocks, std::vector<uint64_t> &fees) const;
 
     /**
      * @brief validate a transaction's fee
@@ -736,7 +756,7 @@ namespace cryptonote
     template<class t_ids_container, class t_tx_container, class t_missed_container>
     bool get_split_transactions_blobs(const t_ids_container& txs_ids, t_tx_container& txs, t_missed_container& missed_txs) const;
     template<class t_ids_container, class t_tx_container, class t_missed_container>
-    bool get_transactions(const t_ids_container& txs_ids, t_tx_container& txs, t_missed_container& missed_txs) const;
+    bool get_transactions(const t_ids_container& txs_ids, t_tx_container& txs, t_missed_container& missed_txs, bool pruned = false) const;
 
     //debug functions
 

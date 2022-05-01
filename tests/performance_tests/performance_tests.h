@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -215,7 +215,6 @@ void run_test(const std::string &filter, Params &params, const char* test_name)
     if (params.stats)
     {
       uint64_t mins = min / scale;
-      uint64_t maxs = max / scale;
       uint64_t meds = med / scale;
       uint64_t p95s = quantiles[9] / scale;
       uint64_t stddevs = stddev / scale;

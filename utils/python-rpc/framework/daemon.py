@@ -1,4 +1,5 @@
-# Copyright (c) 2018 The Monero Project
+# Copyright (c) 2018-2022, The Monero Project
+
 # 
 # All rights reserved.
 # 
@@ -56,7 +57,7 @@ class Daemon(object):
     def get_miner_data(self):
         get_miner_data = {
             'method': 'get_miner_data',
-            'jsonrpc': '2.0',
+            'jsonrpc': '2.0', 
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_miner_data)
@@ -74,6 +75,19 @@ class Daemon(object):
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(calc_pow)
+
+    def add_aux_pow(self, blocktemplate_blob, aux_pow, client = ""):
+        add_aux_pow = {
+            'method': 'add_aux_pow',
+            'params': {
+                'blocktemplate_blob': blocktemplate_blob,
+                'aux_pow' : aux_pow,
+                'client' : client,
+            },
+            'jsonrpc': '2.0',
+            'id': '0'
+        }
+        return self.rpc.send_json_rpc_request(add_aux_pow)
 
     def send_raw_transaction(self, tx_as_hex, do_not_relay = False, do_sanity_checks = True, client = ""):
         send_raw_transaction = {

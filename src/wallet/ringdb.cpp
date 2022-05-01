@@ -1,4 +1,5 @@
-// Copyright (c) 2018, The Monero Project
+// Copyright (c) 2018-2022, The Monero Project
+
 // 
 // All rights reserved.
 // 
@@ -41,9 +42,6 @@
 #define MONERO_DEFAULT_LOG_CATEGORY "wallet.ringdb"
 
 #define V1TAG ((uint64_t)798237759845202)
-
-static const char zerokey[8] = {0};
-static const MDB_val zerokeyval = { sizeof(zerokey), (void *)zerokey };
 
 static int compare_hash32(const MDB_val *a, const MDB_val *b)
 {

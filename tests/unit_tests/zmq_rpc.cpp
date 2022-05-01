@@ -1,4 +1,5 @@
-// Copyright (c) 2020, The Monero Project
+// Copyright (c) 2020-2022, The Monero Project
+
 // 
 // All rights reserved.
 // 
@@ -202,7 +203,6 @@ namespace
     MASSERT(!expected.empty());
 
     std::size_t actual_height = 0;
-    crypto::hash actual_id{};
     crypto::hash actual_prev_id{};
     std::vector<crypto::hash> actual_ids{};
     GET_FROM_JSON_OBJECT(pub.second, actual_height, first_height);

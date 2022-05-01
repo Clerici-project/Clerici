@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are
@@ -906,7 +906,6 @@ uint64_t BlockchainLMDB::add_transaction_data(const crypto::hash& blk_hash, cons
     throw0(DB_ERROR(lmdb_error("Failed to add tx data to db transaction: ", result).c_str()));
 
   const cryptonote::blobdata_ref &blob = txp.second;
-  MDB_val_sized(blobval, blob);
 
   unsigned int unprunable_size = tx.unprunable_size;
   if (unprunable_size == 0)
@@ -1364,7 +1363,8 @@ void BlockchainLMDB::open(const std::string& filename, const int db_flags)
 
   m_folder = filename;
 
-  check_mmap_support();
+  try { check_mmap_support(); }
+  catch(...) { MERROR("Failed to check for mmap support, proceeding"); }
 
 #ifdef __OpenBSD__
   if ((mdb_flags & MDB_WRITEMAP) == 0) {
@@ -3010,7 +3010,7 @@ bool BlockchainLMDB::tx_exists(const crypto::hash& h) const
 
   if (! tx_found)
   {
-    LOG_PRINT_L1("transaction with hash " << epee::string_tools::pod_to_hex(h) << " not found in db");
+    LOG_PRINT_L3("transaction with hash " << epee::string_tools::pod_to_hex(h) << " not found in db");
     return false;
   }
 
@@ -3041,7 +3041,7 @@ bool BlockchainLMDB::tx_exists(const crypto::hash& h, uint64_t& tx_id) const
   bool ret = false;
   if (get_result == MDB_NOTFOUND)
   {
-    LOG_PRINT_L1("transaction with hash " << epee::string_tools::pod_to_hex(h) << " not found in db");
+    LOG_PRINT_L3("transaction with hash " << epee::string_tools::pod_to_hex(h) << " not found in db");
   }
   else if (get_result)
     throw0(DB_ERROR(lmdb_error("DB error attempting to fetch transaction from hash", get_result).c_str()));
@@ -3199,9 +3199,8 @@ bool BlockchainLMDB::get_blocks_from(uint64_t start_height, size_t min_block_cou
   uint64_t size = 0;
   size_t num_txes = 0;
   MDB_val_copy<uint64_t> key(start_height);
-  MDB_val k, v, val_tx_id;
+  MDB_val v, val_tx_id;
   uint64_t tx_id = ~0;
-  MDB_cursor_op op = MDB_SET;
   for (uint64_t h = start_height; h < blockchain_height && blocks.size() < max_block_count && (size < max_size || blocks.size() < min_block_count); ++h)
   {
     MDB_cursor_op op = h == start_height ? MDB_SET : MDB_NEXT;
@@ -3323,7 +3322,7 @@ bool BlockchainLMDB::get_prunable_tx_hash(const crypto::hash& tx_hash, crypto::h
   RCURSOR(txs_prunable_hash);
 
   MDB_val_set(v, tx_hash);
-  MDB_val result, val_tx_prunable_hash;
+  MDB_val result;
   auto get_result = mdb_cursor_get(m_cur_tx_indices, (MDB_val *)&zerokval, &v, MDB_GET_BOTH);
   if (get_result == 0)
   {
@@ -4320,7 +4319,6 @@ bool BlockchainLMDB::get_output_distribution(uint64_t amount, uint64_t from_heig
     return false;
   distribution.resize(db_height - from_height, 0);
 
-  bool fret = true;
   MDB_val_set(k, amount);
   MDB_val v;
   MDB_cursor_op op = MDB_SET;
@@ -5115,11 +5113,10 @@ void BlockchainLMDB::migrate_0_1()
 void BlockchainLMDB::migrate_1_2()
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  uint64_t i, z;
+  uint64_t i;
   int result;
   mdb_txn_safe txn(false);
-  MDB_val k, v;
-  char *ptr;
+  MDB_val v;
 
   MGINFO_YELLOW("Migrating blockchain from DB version 1 to 2 - this may take a while:");
   MINFO("updating txs_pruned and txs_prunable tables...");
@@ -5320,7 +5317,6 @@ void BlockchainLMDB::migrate_2_3()
         if (result)
           throw0(DB_ERROR(lmdb_error("Failed to open a cursor for block_info: ", result).c_str()));
         if (!i) {
-          MDB_stat db_stat;
           result = mdb_stat(txn, m_block_info, &db_stats);
           if (result)
             throw0(DB_ERROR(lmdb_error("Failed to query m_block_info: ", result).c_str()));
@@ -5452,7 +5448,6 @@ void BlockchainLMDB::migrate_3_4()
         if (result)
           throw0(DB_ERROR(lmdb_error("Failed to open a cursor for blocks: ", result).c_str()));
         if (!i) {
-          MDB_stat db_stat;
           result = mdb_stat(txn, m_block_info, &db_stats);
           if (result)
             throw0(DB_ERROR(lmdb_error("Failed to query m_block_info: ", result).c_str()));
@@ -5606,7 +5601,6 @@ void BlockchainLMDB::migrate_4_5()
         if (result)
           throw0(DB_ERROR(lmdb_error("Failed to open a cursor for block_info: ", result).c_str()));
         if (!i) {
-          MDB_stat db_stat;
           result = mdb_stat(txn, m_block_info, &db_stats);
           if (result)
             throw0(DB_ERROR(lmdb_error("Failed to query m_block_info: ", result).c_str()));

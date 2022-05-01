@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -1059,7 +1059,6 @@ bool t_rpc_command_executor::print_transaction(crypto::hash transaction_hash,
     // Print json if requested
     if (include_json)
     {
-      crypto::hash tx_hash, tx_prefix_hash;
       cryptonote::transaction tx;
       cryptonote::blobdata blob;
       std::string source = as_hex.empty() ? pruned_as_hex + prunable_as_hex : as_hex;
@@ -2275,6 +2274,7 @@ bool t_rpc_command_executor::sync_info()
       tools::success_msg_writer() << "Next needed pruning seed: " << res.next_needed_pruning_seed;
 
     tools::success_msg_writer() << std::to_string(res.peers.size()) << " peers";
+    tools::success_msg_writer() << "Remote Host                        Peer_ID   State   Prune_Seed          Height  DL kB/s, Queued Blocks / MB";
     for (const auto &p: res.peers)
     {
       std::string address = epee::string_tools::pad_string(p.info.address, 24);

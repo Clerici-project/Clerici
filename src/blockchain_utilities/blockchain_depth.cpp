@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 //
 // All rights reserved.
 //
@@ -27,6 +27,7 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/range/adaptor/transformed.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/algorithm/string.hpp>
 #include "common/command_line.h"
 #include "common/varint.h"
