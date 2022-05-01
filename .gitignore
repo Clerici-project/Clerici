@@ -69,7 +69,8 @@ cmake-build-debug/
 
 # KDE directory preferences
 .directory
-
+### VSCODE ###
+.vscode/
 
 ### Eclipse ###
 *.pydevproject
